@@ -1,0 +1,33 @@
+<html>
+<head>
+  <script src="http://code.jquery.com/jquery-1.10.2.min.js"></script>
+  <script src="http://underscorejs.org/underscore.js"></script>
+  <script src="http://cdn.peerjs.com/0.3/peer.js"></script>
+  <script src="comm.js"></script>
+  <script type="text/javascript">
+  
+    var PEERJS_KEY = "j5i9gnkpwzxe0zfr";
+    var room_name = "test";
+    //var room_name = "test";//TODO pass to constructor
+  
+    $(document).ready(function() {
+        //$('#test').click( clean_up );
+        ge.connect(PEERJS_KEY, room_name, function(me){
+            ge.event.listen_for('message', function(data){
+                console.log("message handler");
+                console.log(data);
+            });
+            console.log("Configured and ready!");
+            $('#helloworld').append(navigator.userAgent+"<br>");
+            $('#helloworld').append(me.id +"<br>");
+            ge.send('message', "yo dawg, i'm "+me.id);
+        },true);
+    });
+  </script>
+</head>
+
+<body>
+<div id="helloworld"></div>
+<input type="button" id="test" value="test"></input>
+</body>
+</html
