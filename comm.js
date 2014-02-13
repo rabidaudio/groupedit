@@ -13,9 +13,11 @@ var ge = (function(window, DB){
 
     window.onbeforeunload = function(){
         //clean up
-        if( module.is_delegate() ) module.pick_new_delegate();
-        module.self.disconnect();
-        module.self.destroy();
+        if( module.is_delegate() ){ //TODO for some reason, this gets called, but
+            module.pick_new_delegate(); //messages don't actually send
+        }
+//        module.self.disconnect();
+//        module.self.destroy();
     };
     
     log = function(msg){
@@ -25,7 +27,6 @@ var ge = (function(window, DB){
 /* Stupid Simple Event System */
     module.event={};
     module.event.listeners = {};
-    
     module.event.publish_event = function(event, d){
         var f = module.event.listeners[event];
         if(f){
@@ -96,7 +97,7 @@ var ge = (function(window, DB){
 /*             Delegate Methods           */
 
 //The delegate is the leader of the room. It is her job
-//to list herself in the database, respond to peer requests,
+//to list herself in the database, respond to peer requests,  //TODO make submodule
 //and choose a new delegate before leaving.
     module.become_delegate = function(){
         //Tell everyone that you are the new delegate
@@ -104,12 +105,18 @@ var ge = (function(window, DB){
         module.set_delegate(module.self.id);
     };
     module.set_delegate = function(id){
+        //when delegate is changed, make note if it
+        log('setting new delegate');
         module.delegate = id;
         if( module.is_delegate() ){
             DB.store(module.self.id);
-            module.event.listen_for('peer_request', module.handle_peer_request); //register event
+            //register peer_request_response event as duty calls
+            module.event.listen_for('peer_request', module.handle_peer_request);
         }else{
-            module.self.connections[module.delegate][0].on('close', module.pick_new_delegate);
+            module.self.connections[module.delegate][0].on('close', function(){ //module.pick_new_delegate);
+                log('connection to delegate lost');
+                module.lost_delegate();
+            });
         }
     };
     module.is_delegate = function(){
@@ -127,6 +134,7 @@ var ge = (function(window, DB){
         module.send('peer_request_response', known_peers, caller);
     };
     module.pick_new_delegate = function(){
+        log("picking new delegate");
         if( module.is_delegate() ){
             var potential_delegates = window._.chain( module.peers.get_active_peers() )
                 .reject( function(e){
@@ -136,13 +144,16 @@ var ge = (function(window, DB){
                 .value();
             if( potential_delegates.length > 0){
                 module.send('delegate_transfer', potential_delegates[0]);
+                module.set_delegate(potential_delegates[0]);
             }else{
                 log("I'm the only one here");
                 DB.store(null);
+                module.delegate = null;
             }
         }
     }
     module.lost_delegate = function(){
+        console.log("determining replacement");
         var new_delegate = window._.chain( module.peers.get_active_peers() )
             .push( module.self.id )
             .reject( function(e){
