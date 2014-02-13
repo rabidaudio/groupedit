@@ -19,9 +19,6 @@
     }
     
     $(document).ready(function() {
-        //DB.init(room_name, function(data){
-        //    ge.make_connections(data);
-        //});
         DB.init(room_name);
         ge.init(PEERJS_KEY, room_name, function(me){
             ge.event.listen_for('message', function(data){

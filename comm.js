@@ -13,11 +13,9 @@ var ge = (function(window, DB){
 
     window.onbeforeunload = function(){
         //clean up
+        if( module.is_delegate() ) module.pick_new_delegate();
         module.self.disconnect();
         module.self.destroy();
-        //module.peers.set_peers( module.peers.get_active_peers() ); //save only the old connections, not self
-        //window.clearInterval(module.peers.update_interval_id); //stop update
-        //TODO if delegate choose new delegate 
     };
     
     log = function(msg){
@@ -110,6 +108,8 @@ var ge = (function(window, DB){
         if( module.is_delegate() ){
             DB.store(module.self.id);
             module.event.listen_for('peer_request', module.handle_peer_request); //register event
+        }else{
+            module.self.connections[module.delegate][0].on('close', module.pick_new_delegate);
         }
     };
     module.is_delegate = function(){
@@ -128,13 +128,18 @@ var ge = (function(window, DB){
     };
     module.pick_new_delegate = function(){
         if( module.is_delegate() ){
-            var new_delegate = window._.chain( module.peers.get_active_peers() )
+            var potential_delegates = window._.chain( module.peers.get_active_peers() )
                 .reject( function(e){
                     return e==="null";
                 })
                 .sort()     //the new delegate is the one with the alphabetically highest id
-                .value()[0];
-            module.send('delegate_transfer', new_delegate);
+                .value();
+            if( potential_delegates.length > 0){
+                module.send('delegate_transfer', potential_delegates[0]);
+            }else{
+                log("I'm the only one here");
+                DB.store(null);
+            }
         }
     }
     module.lost_delegate = function(){
@@ -153,17 +158,8 @@ var ge = (function(window, DB){
 /******************************************/
 
     module.connect = function(peer_id){
-        //var cb = (typeof callback == 'function') ? callback : new Function(callback);
         log("connecting to "+peer_id);
         var conn =  module.self.connect(peer_id);
-        //setTimeout(function(){//TODO hack to make update happen after connection established
-        //    module.peers.update_peers();
-        //}, 500);
-//        conn.on('connection', function(conn){//TODO i don't think this is valid
-//            log("requested connection was established!");
-//            log(conn);
-//            setTimeout(cb, 0, conn);
-//        });
         conn.on('data', function(req){
         //set message listener
 	        log('rcd');
@@ -185,10 +181,10 @@ var ge = (function(window, DB){
             })
             .value();
         if(c.length == 0) log("There were no connections to make");
-        setTimeout(cb, 0); //callback when all requests have been made. TODO not when done
+        setTimeout(cb, 0); //all requests have been made. NOTE: not when done
     };
     
-    module.request_peers(){
+    module.request_peers = function(){
         var delegate_connection = module.self.connections[module.delegate][0];
         if( delegate_connection.open ){
             module.send('peer_request', module.self.id, module.delegate);
@@ -211,39 +207,15 @@ var ge = (function(window, DB){
 		    },
       	};
         if(module.DEBUG) pdata.debug = 3;
-      	module.self = new window.Peer(pdata);
+      	module.self = new window.Peer(pdata); //TODO allow for setting ids (so they can persist via cookies)
       	
       	module.self.on('open', function(id){
       		log("my id is "+id);
       		
-      		//var peers = module.peers.get_peers(); //instead, ask delegate for peers
-      		module.delegate = DB.get();
-      		log("Delegate is:"+module.delegate);
-	        if( !module.delegate ){
-	            log('This room is empty.');
-	            module.become_delegate();
-            }else{
-                //connect to delegate
-                log('connecting to delegate');
-                module.connect(module.delegate);
-                module.listen_for('peer_request_response', function(data){
-                    log('got a list of other peers');
-                    setTimeout(function(){//so that we can move on to other stuff
-                        module.make_connections(data, function(){
-                            log("all connections made");
-                            //TODO ask delegate for current text thang
-                            //TODO maybe init callback should go here instead?
-                        });
-                    },0);
-                });
-                setTimeout(module.request_peers, 0); //request peers
-            }
-	        
-	        //now prepare to accept other connections
+	        //prepare to accept connections (well in advance)
 	        module.self.on('connection', function(conn){
 		        log('connection recvd');
 		        log(conn);
-		        //module.peers.update_peers();
 		        conn.on('data', function(req){
 			        log('rcd');
 			        //req.id = conn.peer; //TODO if source is necessary, include this
@@ -251,8 +223,29 @@ var ge = (function(window, DB){
 		            if(req.command) module.event.publish_event(req.command, req.data);
 		        });
 	        });
-	        //module.peers.update_peers();
-	        window.setTimeout(cb,0,module.self);
+      		
+      		//connect to delegate and ask for peers
+      		module.delegate = DB.get();
+      		log("Delegate is:"+module.delegate);
+	        if( !module.delegate ){
+	            log('This room is empty.');
+	            module.become_delegate();
+	            window.setTimeout(cb,0,module.self);
+            }else{
+                log('connecting to delegate');
+                module.connect(module.delegate);
+                module.set_delegate(module.delegate); //this creates the disconnect listener
+                module.event.listen_for('peer_request_response', function(data){
+                    log('got a list of other peers');
+                    setTimeout(function(){//so that we can move on to other stuff
+                        module.make_connections(data, function(){
+                            log("all connections made");
+                            window.setTimeout(cb, 0, module.self);
+                        });
+                    },0);
+                });
+                setTimeout(module.request_peers, 0); //request peers
+            }
       	});
     };
     

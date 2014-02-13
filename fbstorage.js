@@ -1,8 +1,7 @@
 var DB = (function(window){
-    //Module for handling storage. using localStorage for
-    //testing. to be replaced with Firebase.
+
     if(!window.Firebase)    throw "This module requires Firebase.";
-    if(!window._)           throw "UnderscoreJS is required to use this module"; //TODO remove this if possible
+    //if(!window._)           throw "UnderscoreJS is required to use this module";
     
     module={};
     module.init = function(room_name){//, update_callback){
@@ -13,7 +12,6 @@ var DB = (function(window){
         //set a listener
         module.FB.child(module.room).on('value', function(dataSnapshot){
             console.log('Data changed on FB');
-            //module.data = window._.flatten(dataSnapshot.val());
             module.data = dataSnapshot.val();
             console.log(module.data);
             //setTimeout(module.cb, 0, module.data);
@@ -26,14 +24,5 @@ var DB = (function(window){
             return module.data;
         }
     }
-        
-    //create accessor functions
-    //module.store = function(id, data){
-        //localStorage.setItem(id, JSON.stringify(data));
-    //}
-    
-    //module.get = function(id){
-    //    return JSON.parse(localStorage.getItem(id));
-    //}
     return module;
 }(window));
