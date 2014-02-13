@@ -96,7 +96,7 @@ var ge = (function(window, DB){
         var conn =  module.self.connect(peer_id);
         setTimeout(function(){//TODO hack to make update happen after connection established
             module.peers.update_peers();
-        }, 0);
+        }, 500);
         conn.on('data', function(req){
 	        log('rcd');
 	        log(req);

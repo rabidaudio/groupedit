@@ -2,7 +2,7 @@ var DB = (function(window){
     //Module for handling storage. using localStorage for
     //testing. to be replaced with Firebase.
     if(!window.Firebase)    throw "This module requires Firebase.";
-    if(!window._)           throw "UnderscoreJS is required to use this module";
+    if(!window._)           throw "UnderscoreJS is required to use this module"; //TODO remove this if possible
     
     module={};
     module.init = function(room_name, update_callback){
