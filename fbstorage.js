@@ -5,10 +5,10 @@ var DB = (function(window){
     if(!window._)           throw "UnderscoreJS is required to use this module"; //TODO remove this if possible
     
     module={};
-    module.init = function(room_name, update_callback){
+    module.init = function(room_name){//, update_callback){
         module.room = room_name;
         module.FB = new Firebase('https://blinding-fire-3695.firebaseio.com/room/');
-        module.cb = (typeof update_callback == 'function') ? update_callback : new Function(update_callback);
+        //module.cb = (typeof update_callback == 'function') ? update_callback : new Function(update_callback);
         
         //set a listener
         module.FB.child(module.room).on('value', function(dataSnapshot){
@@ -16,7 +16,7 @@ var DB = (function(window){
             //module.data = window._.flatten(dataSnapshot.val());
             module.data = dataSnapshot.val();
             console.log(module.data);
-            setTimeout(module.cb, 0, module.data);
+            //setTimeout(module.cb, 0, module.data);
         });
         
         module.store = function(data){

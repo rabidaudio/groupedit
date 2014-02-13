@@ -19,9 +19,10 @@
     }
     
     $(document).ready(function() {
-        DB.init(room_name, function(data){
-            ge.make_connections(data);
-        });
+        //DB.init(room_name, function(data){
+        //    ge.make_connections(data);
+        //});
+        DB.init(room_name);
         ge.init(PEERJS_KEY, room_name, function(me){
             ge.event.listen_for('message', function(data){
                 console.log("message handler");
@@ -36,7 +37,7 @@
             console.log("Configured and ready!");
             $('#helloworld').append(navigator.userAgent+"<br>");
             $('#helloworld').append(me.id +"<br>");
-            $(document.body).on('keydown', send_update);
+            //$(document.body).on('keydown', send_update);
             $('#test').click(function(){
                 ge.send('message', "yo dawg, i'm "+me.id+"<br>");
             });
