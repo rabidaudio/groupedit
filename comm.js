@@ -14,7 +14,7 @@ var ge = (function(window, DB){
         //clean up
         module.self.disconnect();
         module.self.destroy();
-        module.set_peers( module.get_active_peers() ); //save only the old connections, not self
+        module.peers.set_peers( module.peers.get_active_peers() ); //save only the old connections, not self
         //window.clearInterval(module.peers.update_interval_id); //stop update 
         //log("goodbye");
     };
