@@ -1,7 +1,8 @@
-var ge = (function(window){
+var ge = (function(window, DB){
 
     if(!window.Peer)    throw "PeerJS is required to use this module";
     if(!window._)       throw "UnderscoreJS is required to use this module";
+    if(!DB)             throw "Some DB module is required";
 
     var module = {};
     module.self = undefined; //The peer for this page
@@ -14,8 +15,7 @@ var ge = (function(window){
         module.self.disconnect();
         module.self.destroy();
         module.set_peers( module.get_active_peers() ); //save only the old connections, not self
-        window.clearInterval(module.peers.update_interval_id); //stop update 
-        //log( localStorage.getItem(room_name) );
+        //window.clearInterval(module.peers.update_interval_id); //stop update 
         //log("goodbye");
     };
     
@@ -55,10 +55,9 @@ var ge = (function(window){
 
     module.peers.get_peers = function(){
         //get a list of peers in the room to connect to, not including you
-	    var peers = window._.reject(
-	        window.JSON.parse( window.localStorage.getItem( module.room_name) ),
-	        function(e){ return e === module.self.id }
-        );
+	    var peers = window._.reject( DB.get(module.room_name), function(e){
+	        return e === module.self.id;
+        });
         log("grabbed");
         log(peers);
 	    if( !window._.isArray(peers) ){
@@ -75,7 +74,7 @@ var ge = (function(window){
 	    })
         log("setting with ");
         log(list);
-	    window.localStorage.setItem(module.room_name, window.JSON.stringify( list ));
+	    DB.store(module.room_name, list);
     };
 
     module.peers.update_peers = function(){
@@ -133,8 +132,9 @@ var ge = (function(window){
 	        //module.peers.update_peers();
 	        //log("now it looks like:");
 	        //log( module.peers.get_peers() );
-	        module.peers.update_interval_id =  window.setInterval(module.peers.update_peers, 3000);//TODO ideally dont do this
-	
+	        //module.peers.update_interval_id =  window.setInterval(module.peers.update_peers, 3000);//TODO ideally dont do this
+	        window.setTimeout(module.peers.update_peers, 5000);
+	        
 	        module.self.on('connection', function(conn){
 		        log('connection recvd');
 		        log(conn);
@@ -167,4 +167,4 @@ var ge = (function(window){
     }
     
     return module;
-}(window));
+}(window, DB));
