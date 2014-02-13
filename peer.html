@@ -3,7 +3,9 @@
   <script src="http://code.jquery.com/jquery-1.10.2.min.js"></script>
   <script src="http://underscorejs.org/underscore.js"></script>
   <script src="http://cdn.peerjs.com/0.3/peer.js"></script>
-  <script src="localstorage.js"></script>
+  <script type='text/javascript' src='https://cdn.firebase.com/js/client/1.0.6/firebase.js'></script>
+  <!--<script src="localstorage.js"></script>-->
+  <script src="fbstorage.js"></script>
   <script src="comm.js"></script>
   <script type="text/javascript">
   
@@ -15,7 +17,10 @@
     }
     
     $(document).ready(function() {
-        ge.connect(PEERJS_KEY, room_name, function(me){
+        DB.init(room_name, function(data){
+            ge.make_connections(data);
+        });
+        ge.init(PEERJS_KEY, room_name, function(me){
             ge.event.listen_for('message', function(data){
                 console.log("message handler");
                 console.log(data);

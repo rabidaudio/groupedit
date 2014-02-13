@@ -54,7 +54,7 @@ var ge = (function(window, DB){
 
     module.peers.get_peers = function(){
         //get a list of peers in the room to connect to, not including you
-	    var peers = window._.reject( DB.get(module.room_name), function(e){
+	    var peers = window._.reject( DB.get(), function(e){
 	        return e === module.self.id;
         });
         log("grabbed");
@@ -73,7 +73,8 @@ var ge = (function(window, DB){
 	    })
         log("setting with ");
         log(list);
-	    DB.store(module.room_name, list);
+	    //DB.store(module.room_name, list);
+	    DB.store(list);
     };
 
     module.peers.update_peers = function(){
@@ -90,8 +91,29 @@ var ge = (function(window, DB){
     }
 /******************************************/
     
+    module.connect = function(peer_id){
+        log("connecting to "+peer_id);
+        var conn =  module.self.connect(peer_id);
+        conn.on('data', function(req){
+	        log('rcd');
+	        log(req);
+	        if(req.command) module.event.publish_event(req.command, req.data);
+	        module.peers.update_peers();
+        });
+    }
+    
+    module.make_connections = function(peer_list){
+        var c= window._.chain(peer_list)
+            .difference(module.peers.get_active_peers())
+            .each(function(p){
+                log("connecting to "+p);
+                module.connect(p);
+            })
+            .value();
+        if(c.length == 0) log("There were no connections to make");
+    }
 
-    module.connect = function(key, room_name, callback, debug){
+    module.init = function(key, room_name, callback, debug){
         var cb = (typeof callback == 'function') ? callback : new Function(callback);
         module.DEBUG = debug;
         module.PEERJS_KEY = key;
@@ -115,19 +137,12 @@ var ge = (function(window, DB){
       		log(peers);
 	        if( peers === null || peers.length === 0 ) log('This room is empty.');
 	        log("friends: "+peers);
-	        window._.each(peers, function(e,i,a){
-		        log("connecting to "+e);
-		        var conn =  module.self.connect(e);
-		        conn.on('data', function(req){
-			        log('rcd');
-			        log(req);
-			        if(req.command) module.event.publish_event(req.command, req.data);
-		        });
-	        })
+	        module.make_connections(peers);
+
 	        //module.peers.update_peers();
 	        //log("now it looks like:");
 	        //log( module.peers.get_peers() );
-	        //module.peers.update_interval_id =  window.setInterval(module.peers.update_peers, 3000);//TODO ideally dont do this
+	        //module.peers.update_interval_id =  window.setInterval(module.peers.update_peers, 30000);//TODO ideally dont do this
 	        //window.setTimeout(module.peers.update_peers, 5000);
 	        
 	        module.self.on('connection', function(conn){
