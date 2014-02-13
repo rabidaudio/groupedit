@@ -9,7 +9,11 @@
   
     var PEERJS_KEY = "j5i9gnkpwzxe0zfr";
     var room_name = "test";
-  
+    
+    function send_update(){
+        ge.send('data_update', $('#textarea').val() );
+    }
+    
     $(document).ready(function() {
         ge.connect(PEERJS_KEY, room_name, function(me){
             ge.event.listen_for('message', function(data){
@@ -17,13 +21,19 @@
                 console.log(data);
                  $('#helloworld').append(data);
             });
+            ge.event.listen_for('data_update', function(data){
+                console.log('data_update handler');
+                console.log(data);
+                $('#textarea').val(data);
+            });
             console.log("Configured and ready!");
             $('#helloworld').append(navigator.userAgent+"<br>");
             $('#helloworld').append(me.id +"<br>");
+            $(document.body).on('keydown', send_update);
             $('#test').click(function(){
                 ge.send('message', "yo dawg, i'm "+me.id);
             });
-        },true);
+        },true);//TODO debug
     });
   </script>
 </head>
@@ -31,5 +41,6 @@
 <body>
 <div id="helloworld"></div>
 <input type="button" id="test" value="test"></input>
+<textarea id="textarea"></textarea>
 </body>
 </html>

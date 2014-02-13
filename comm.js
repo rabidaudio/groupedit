@@ -8,7 +8,7 @@ var ge = (function(window, DB){
     module.self = undefined; //The peer for this page
     module.room_name = undefined;
     module.PEERJS_KEY = undefined;
-    module.DEBUG = true;    //TODO
+    module.DEBUG = false;
 
     window.onbeforeunload = function(){
         //clean up
@@ -16,7 +16,6 @@ var ge = (function(window, DB){
         module.self.destroy();
         module.peers.set_peers( module.peers.get_active_peers() ); //save only the old connections, not self
         //window.clearInterval(module.peers.update_interval_id); //stop update 
-        //log("goodbye");
     };
     
     log = function(msg){
@@ -114,26 +113,22 @@ var ge = (function(window, DB){
       		var peers = module.peers.get_peers();
       		log("testing peers:");
       		log(peers);
-	        if( peers === null || peers.length === 0 ){
-		        //empty room, you are the first!
-		        log('This room is empty.');
-	        }else{
-		        log("friends: "+peers);
-		        window._.each(peers, function(e,i,a){
-			        log("connecting to "+e);
-			        var conn =  module.self.connect(e);
-			        conn.on('data', function(req){
-				        log('rcd');
-				        log(req);
-				        if(req.command) module.event.publish_event(req.command, req.data);
-			        });
-		        })
-	        }
+	        if( peers === null || peers.length === 0 ) log('This room is empty.');
+	        log("friends: "+peers);
+	        window._.each(peers, function(e,i,a){
+		        log("connecting to "+e);
+		        var conn =  module.self.connect(e);
+		        conn.on('data', function(req){
+			        log('rcd');
+			        log(req);
+			        if(req.command) module.event.publish_event(req.command, req.data);
+		        });
+	        })
 	        //module.peers.update_peers();
 	        //log("now it looks like:");
 	        //log( module.peers.get_peers() );
 	        //module.peers.update_interval_id =  window.setInterval(module.peers.update_peers, 3000);//TODO ideally dont do this
-	        window.setTimeout(module.peers.update_peers, 5000);
+	        //window.setTimeout(module.peers.update_peers, 5000);
 	        
 	        module.self.on('connection', function(conn){
 		        log('connection recvd');
@@ -145,6 +140,7 @@ var ge = (function(window, DB){
 		            if(req.command) module.event.publish_event(req.command, req.data);
 		        });
 	        });
+	        module.peers.update_peers();
 	        window.setTimeout(cb,0,module.self);
       	});
     }
