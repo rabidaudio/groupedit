@@ -13,7 +13,9 @@
     var room_name = "test";
     
     function send_update(){
-        ge.send('data_update', $('#textarea').val() );
+        setTimeout(function(){//TODO hack so that updates happen after type
+            ge.send('data_update', $('#textarea').val() );
+        },100);
     }
     
     $(document).ready(function() {
@@ -36,7 +38,7 @@
             $('#helloworld').append(me.id +"<br>");
             $(document.body).on('keydown', send_update);
             $('#test').click(function(){
-                ge.send('message', "yo dawg, i'm "+me.id);
+                ge.send('message', "yo dawg, i'm "+me.id+"<br>");
             });
         },true);//TODO debug
     });
@@ -44,8 +46,11 @@
 </head>
 
 <body>
-<div id="helloworld"></div>
-<input type="button" id="test" value="test"></input>
-<textarea id="textarea"></textarea>
+<textarea id="textarea" rows="10" cols="100"></textarea>
+<p>
+    <input type="button" id="test" value="test"></input>
+</p><p>
+    <div id="helloworld"></div>
+</p>
 </body>
 </html>

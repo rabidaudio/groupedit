@@ -94,17 +94,22 @@ var ge = (function(window, DB){
     module.connect = function(peer_id){
         log("connecting to "+peer_id);
         var conn =  module.self.connect(peer_id);
+        setTimeout(function(){//TODO hack to make update happen after connection established
+            module.peers.update_peers();
+        }, 0);
         conn.on('data', function(req){
 	        log('rcd');
 	        log(req);
 	        if(req.command) module.event.publish_event(req.command, req.data);
-	        module.peers.update_peers();
         });
     }
     
     module.make_connections = function(peer_list){
         var c= window._.chain(peer_list)
             .difference(module.peers.get_active_peers())
+            .reject(function(e){
+	            return e === module.self.id;
+            })
             .each(function(p){
                 log("connecting to "+p);
                 module.connect(p);

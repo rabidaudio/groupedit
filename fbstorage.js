@@ -13,7 +13,8 @@ var DB = (function(window){
         //set a listener
         module.FB.child(module.room).on('value', function(dataSnapshot){
             console.log('Data changed on FB');
-            module.data = window._.flatten(dataSnapshot.val());
+            //module.data = window._.flatten(dataSnapshot.val());
+            module.data = dataSnapshot.val();
             console.log(module.data);
             setTimeout(module.cb, 0, module.data);
         });
