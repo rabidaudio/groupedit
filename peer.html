@@ -4,39 +4,78 @@
   <script src="http://underscorejs.org/underscore.js"></script>
   <script src="http://cdn.peerjs.com/0.3/peer.js"></script>
   <script type='text/javascript' src='https://cdn.firebase.com/js/client/1.0.6/firebase.js'></script>
-  <!--<script src="localstorage.js"></script>-->
   <script src="fbstorage.js"></script>
-  <script src="comm.js"></script>
+  <script src="protocol.js"></script>
   <script type="text/javascript">
   
     var PEERJS_KEY = "j5i9gnkpwzxe0zfr";
-    var room_name = "test";
+    //var room_name = "test";
+    var room_name = undefined;
+
+    /*function getRandom(min, max) {
+        return Math.random() * (max - min) + min;
+    }*/
     
-    function send_update(){
+    function base_conv(int){
+        var alph = "ABCDEFGHIJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz";
+        var str="";
+        while(int>0){
+            str=str+alph[int % alph.length];
+            int=Math.floor(int / alph.length);
+        }
+        return str;
+    }
+    
+    /*function send_update(){
         setTimeout(function(){//TODO hack so that updates happen after type
             ge.send('data_update', $('#textarea').val() );
         },100);
+    }*/
+    function send_update(){
+        //GE.send('message', "yo dawg, i'm "+me.id+"<br>");
+        GE.send('message', $('#textarea').val() );
+        dumb_chat($('#textarea').val(), GE.self.id);
+        $('#textarea').val("");
+    }
+    
+    function dumb_chat(message, src){
+        $('#helloworld').append(
+            '<p><b>'+src+': '+'</b>'+message+'<br>'+(new Date().toLocaleString())+'</p>'
+        );
     }
     
     $(document).ready(function() {
+        if(window.location.hash === ""){
+            console.log("creating room name");
+            room_name =  base_conv(Math.floor(Math.random()*10000000));
+            window.location.hash = room_name;
+        }else{
+            room_name = window.location.hash.substr(1);
+        }
         DB.init(room_name);
-        ge.init(PEERJS_KEY, room_name, function(me){
-            ge.event.listen_for('message', function(data){
+        GE.init(PEERJS_KEY, room_name, function(me){
+            /*GE.event.listen_for('message', function(data){
                 console.log("message handler");
                 console.log(data);
-                 $('#helloworld').append(data);
-            });
-            ge.event.listen_for('data_update', function(data){
+                $('#helloworld').append(data);
+            });*/
+            GE.event.listen_for('message', dumb_chat);
+            /*GE.event.listen_for('data_update', function(data){
                 console.log('data_update handler');
                 console.log(data);
                 $('#textarea').val(data);
-            });
+            });*/
             console.log("Configured and ready!");
             $('#helloworld').append(navigator.userAgent+"<br>");
             $('#helloworld').append(me.id +"<br>");
             //$(document.body).on('keydown', send_update);
-            $('#test').click(function(){
-                ge.send('message', "yo dawg, i'm "+me.id+"<br>");
+            $('#test').click(send_update);
+            $('#textarea').keydown(function(event){
+                console.log('keydown');
+                if(event.keyCode === 13){
+                    event.preventDefault();
+                    send_update();
+                }
             });
         },true);//TODO debug
     });
@@ -45,6 +84,7 @@
 
 <body>
 <textarea id="textarea" rows="10" cols="100"></textarea>
+<!--<input type="text" id="textarea"></input>-->
 <p>
     <input type="button" id="test" value="test"></input>
 </p><p>

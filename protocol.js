@@ -1,4 +1,4 @@
-var ge = (function(window, DB){
+var GE = (function(window, DB){
 
     if(!window.Peer)    throw "PeerJS is required to use this module";
     if(!window._)       throw "UnderscoreJS is required to use this module";
@@ -27,11 +27,11 @@ var ge = (function(window, DB){
 /* Stupid Simple Event System */
     module.event={};
     module.event.listeners = {};
-    module.event.publish_event = function(event, d){
+    module.event.publish_event = function(event, src, d){
         var f = module.event.listeners[event];
         if(f){
             log("calling command handler "+event);
-            window.setTimeout(f, 0, d);
+            window.setTimeout(f, 0, d, src);
         }else{
             throw "unknown command: " + event;
         }
@@ -44,54 +44,19 @@ var ge = (function(window, DB){
 
 
 /* Peer List Management */
-//TODO needs overhaul for new protocol
-    module.peers = {};
-    module.peers.get_active_peers = function(){
+
+    module.get_active_peers = function(include_self){
         //get a list of actively connected peers
         return window._.chain(module.self.connections)
                 .filter(function(e){ return e[0].open; })   //only open connections
-                .map(function(e){ return e[0].peer; })        //get ids
+                .map(function(e){ return e[0].peer; })      //get ids
+                .push( (include_self ? module.self.id : null) )
+                .reject( function(e){
+                    return e==null;
+                })
+                .sort()
                 .value();
     };
-
-//    module.peers.get_peers = function(){
-//        //get a list of peers in the room to connect to, not including you
-//	    var peers = window._.reject( DB.get(), function(e){
-//	        return e === module.self.id; //TODO rejecting and adding back later is stupid. plz standardize
-//        });
-//        log("grabbed");
-//        log(peers);
-//	    if( !window._.isArray(peers) ){
-//		    //peers = [];
-//		    module.peers.set_peers(peers);
-//	    }
-//	    return peers;
-//    };
-    
-//    module.peers.set_peers = function(peers){
-//        //store a peer list
-//        var list = window._.filter(peers, function(e){
-//                return !!e;
-//	    })
-//        log("setting with ");
-//        log(list);
-//	    //DB.store(module.room_name, list);
-//	    DB.store(list);
-//    };
-
-//    module.peers.update_peers = function(){
-//        //get a list of active connections and store them
-//        var peers = window._.chain( module.peers.get_active_peers() )
-//            .push( module.self.id )
-//            .reject( function(e){
-//                return e==="null";
-//            })
-//            .value();
-//        log("updating with");
-//        log(peers);
-//        module.peers.set_peers(peers);
-//    };
-/******************************************/
 
     
 /*             Delegate Methods           */
@@ -113,7 +78,7 @@ var ge = (function(window, DB){
             //register peer_request_response event as duty calls
             module.event.listen_for('peer_request', module.handle_peer_request);
         }else{
-            module.self.connections[module.delegate][0].on('close', function(){ //module.pick_new_delegate);
+            module.self.connections[module.delegate][0].on('close', function(){
                 log('connection to delegate lost');
                 module.lost_delegate();
             });
@@ -125,23 +90,13 @@ var ge = (function(window, DB){
     module.handle_peer_request = function(caller){
     //peer requests require the data to be the source id.
     //the response is an array of known ids (which may include source and dest)
-        var known_peers = window._.chain( module.peers.get_active_peers() )
-                .push( module.self.id )
-                .reject( function(e){
-                    return e==="null";
-                })
-                .value();
+        var known_peers = module.get_active_peers(true);
         module.send('peer_request_response', known_peers, caller);
     };
     module.pick_new_delegate = function(){
         log("picking new delegate");
         if( module.is_delegate() ){
-            var potential_delegates = window._.chain( module.peers.get_active_peers() )
-                .reject( function(e){
-                    return e==="null";
-                })
-                .sort()     //the new delegate is the one with the alphabetically highest id
-                .value();
+            var potential_delegates = module.get_active_peers(false);
             if( potential_delegates.length > 0){
                 module.send('delegate_transfer', potential_delegates[0]);
                 module.set_delegate(potential_delegates[0]);
@@ -154,13 +109,7 @@ var ge = (function(window, DB){
     }
     module.lost_delegate = function(){
         console.log("determining replacement");
-        var new_delegate = window._.chain( module.peers.get_active_peers() )
-            .push( module.self.id )
-            .reject( function(e){
-                return e==="null";
-            })
-            .sort()     //the new delegate is the one with the alphabetically highest id
-            .value()[0];
+        var new_delegate = module.get_active_peers(true)[0];
         if( new_delegate === module.self.id ){
             module.become_delegate();
         }
@@ -168,24 +117,21 @@ var ge = (function(window, DB){
     module.event.listen_for('delegate_transfer', module.set_delegate);
 /******************************************/
 
+    module.handle_request = function(req){
+        log('rcd');
+        log(req);
+        if(req.command) module.event.publish_event(req.command, req.src, req.data);
+    };
     module.connect = function(peer_id){
         log("connecting to "+peer_id);
         var conn =  module.self.connect(peer_id);
-        conn.on('data', function(req){
-        //set message listener
-	        log('rcd');
-	        log(req); //TODO if we want source we need to put it here too
-	        if(req.command) module.event.publish_event(req.command, req.data);
-        });
+        conn.on('data', module.handle_request);
     };
     
     module.make_connections = function(peer_list, callback){
         var cb = (typeof callback == 'function') ? callback : new Function(callback);
         var c= window._.chain(peer_list)
-            .difference(module.peers.get_active_peers())
-            .reject(function(e){
-	            return e === module.self.id;
-            })
+            .difference(module.get_active_peers(false))
             .each(function(p){
                 log("connecting to "+p);
                 module.connect(p);
@@ -227,12 +173,7 @@ var ge = (function(window, DB){
 	        module.self.on('connection', function(conn){
 		        log('connection recvd');
 		        log(conn);
-		        conn.on('data', function(req){
-			        log('rcd');
-			        //req.id = conn.peer; //TODO if source is necessary, include this
-			        log(req);
-		            if(req.command) module.event.publish_event(req.command, req.data);
-		        });
+		        conn.on('data', module.handle_request);
 	        });
       		
       		//connect to delegate and ask for peers
@@ -246,7 +187,7 @@ var ge = (function(window, DB){
                 log('connecting to delegate');
                 module.connect(module.delegate);
                 module.set_delegate(module.delegate); //this creates the disconnect listener
-                module.event.listen_for('peer_request_response', function(data){
+                module.event.listen_for('peer_request_response', function(data, src){
                     log('got a list of other peers');
                     setTimeout(function(){//so that we can move on to other stuff
                         module.make_connections(data, function(){
@@ -266,9 +207,10 @@ var ge = (function(window, DB){
         var message={};
         message.command = command;
         message.data = data;
+        message.src = module.self.id;
         log(message);
         if(dest == undefined){
-            window._.each(module.peers.get_active_peers(), function(peer){
+            window._.each(module.get_active_peers(false), function(peer){
                 var c = module.self.connections[peer];
                 log(c);
                 if(c){
