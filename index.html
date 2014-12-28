@@ -1,0 +1,65 @@
+<html>
+<head>
+  <script src="http://code.jquery.com/jquery-1.10.2.min.js"></script>
+  <script src="http://underscorejs.org/underscore.js"></script>
+  <script src="/vendor/jquery-textrange.js"></script>
+  <script src="/vendor/diff.js"></script>
+</head>
+<body>
+    <div id="editor">
+        <textarea id="editor-textarea" rows="80" cols="80"></textarea>
+    </div>
+
+    <script>
+
+    var log = console.log.bind(console);
+
+    var memory;
+    var changes = [];
+    var interval;
+
+    /*{
+        position: 81,
+        start: 81,
+        end: 81,
+        length: 0,
+        text: ""
+    }*/
+
+    function append_change(){
+        var new_data = $(this).val();
+        log(new_data);
+        var selection = $(this).textrange();
+        log(selection);
+        var difflines = JsDiff.diffLines(memory, new_data);
+        var diffchars = JsDiff.diffChars(memory, new_data);
+        // log(difflines);
+        // log(diffchars);
+        var diffpatch = JsDiff.createPatch(memory, new_data);
+        log(diffpatch);
+        changes.push(diffpatch);
+    }
+
+    function handle_changes(){
+        var i;
+        for(i=0; i<changes.length; i++){
+            var change = changes.shift();
+            memory = JsDiff.applyPatch(memory, change);
+        }
+        
+    }
+
+    function update_memory(new_data){
+        memory = new_data; //This will eventually be more efficient
+    }
+
+    $(document).ready(function(){
+        var editor_textarea = $('#editor-textarea');
+        lines = editor_textarea.val().split("\n"); //TODO handle carrage returns (fuckin windoze)
+        editor_textarea.on('keyup', append_change);
+        interval = setInterval(handle_changes, 500);
+        memory = editor_textarea.val();
+    });
+    </script>
+</body>
+</html>
